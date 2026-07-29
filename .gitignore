@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+.claude/settings.local.json
+data/*.csv
+mlruns/
