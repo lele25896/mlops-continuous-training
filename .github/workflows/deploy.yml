@@ -1,0 +1,122 @@
+name: Test, Terraform, Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+    branches: [main]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: read
+  id-token: write # per Workload Identity Federation
+
+env:
+  REGION: europe-west1
+  REPO: mlops
+  MLFLOW_SERVICE: mlflow
+  RETRAIN_JOB: retrain-loop
+  SERVE_SERVICE: serving-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/
+
+  terraform:
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+      - run: terraform init
+      - run: terraform validate
+      - run: terraform plan -no-color
+      - if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
+
+  # Three components share one Artifact Registry repo (terraform/mlflow.tf's
+  # google_artifact_registry_repository.images, id "mlops"). Each Dockerfile
+  # builds from the repo root context — data.py/train.py/promote.py/drift.py
+  # are copied flat into jobs/serve images, see their own Dockerfile comments.
+  deploy-mlflow:
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+      - run: |
+          IMG=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/mlflow:${{ github.sha }}
+          docker build -f mlflow/Dockerfile -t $IMG .
+          docker push $IMG
+          echo "IMG=$IMG" >> $GITHUB_ENV
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.MLFLOW_SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMG }}
+
+  deploy-retrain-job:
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+      - run: |
+          IMG=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/retrain-job:${{ github.sha }}
+          docker build -f jobs/Dockerfile -t $IMG .
+          docker push $IMG
+      - run: |
+          gcloud run jobs update ${{ env.RETRAIN_JOB }} \
+            --region ${{ env.REGION }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/retrain-job:${{ github.sha }}
+
+  deploy-serve:
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+      - run: |
+          IMG=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/serve:${{ github.sha }}
+          docker build -f src/serve/Dockerfile -t $IMG .
+          docker push $IMG
+          echo "IMG=$IMG" >> $GITHUB_ENV
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVE_SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMG }}

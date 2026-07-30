@@ -96,6 +96,6 @@ resource "google_cloud_run_v2_service_iam_member" "mlflow_selftest_invoker" {
 
 resource "google_service_account_iam_member" "developer_impersonate_mlflow_sa" {
   service_account_id = google_service_account.mlflow.name
-  role                = "roles/iam.serviceAccountTokenCreator"
-  member              = "user:gabriele.giacometti2@gmail.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "user:gabriele.giacometti2@gmail.com"
 }

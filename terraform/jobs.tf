@@ -71,9 +71,9 @@ resource "google_cloud_run_v2_job_iam_member" "scheduler_invoker" {
 }
 
 resource "google_cloud_scheduler_job" "retrain_trigger" {
-  name      = "retrain-loop-trigger"
-  schedule  = "0 6 * * *"
-  time_zone = "Etc/UTC"
+  name       = "retrain-loop-trigger"
+  schedule   = "0 6 * * *"
+  time_zone  = "Etc/UTC"
   depends_on = [google_project_service.apis]
 
   http_target {
