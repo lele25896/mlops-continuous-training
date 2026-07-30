@@ -5,11 +5,11 @@ champion/challenger promotion gate, Evidently drift detection, automated
 retraining via Cloud Run Jobs, rollback by reassigning the `@champion` alias
 (no redeploy).
 
-Data: hourly AEP energy load (same dataset as
-[Energy-Consumption-Forecasting](https://github.com/lele25896/Energy-Consumption-Forecasting)),
-replayed on a rolling weekly cursor to simulate time passing. Model: XGBoost
++ Data: hourly AEP energy load (same dataset as
+  [Energy-Consumption-Forecasting](https://github.com/lele25896/Energy-Consumption-Forecasting)),
+  replayed on a rolling weekly cursor to simulate time passing. Model: XGBoost
 + lag/calendar features — the point of this project is the lifecycle around
-the model, not the model itself.
+  the model, not the model itself.
 
 ```
 Cloud Scheduler (daily)
@@ -29,9 +29,12 @@ Cloud Scheduler (daily)
 
 ## Status
 
-Bootstrap only — GCP project, buckets, WIF/CI identity in place. MLflow
-server, training, registry, drift, and serving land phase by phase; see
-commit history.
+MLflow tracking server is live (private Cloud Run service, SQLite backend on
+a natively-mounted GCS volume, `max_instance_count=1`). The concurrency risk
+that design depends on — GCS FUSE has no file locking — was load-tested
+before building anything on top of it: see [scripts/smoke_mlflow.py](scripts/smoke_mlflow.py).
+Training, registry gate, drift detection, and serving land phase by phase;
+see commit history.
 
 ## Local setup
 
