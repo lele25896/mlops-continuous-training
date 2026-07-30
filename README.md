@@ -1,5 +1,7 @@
 # MLOps Continuous Training
 
+[![Test, Terraform, Deploy](https://github.com/lele25896/mlops-continuous-training/actions/workflows/deploy.yml/badge.svg)](https://github.com/lele25896/mlops-continuous-training/actions/workflows/deploy.yml)
+
 Closed-loop continuous training on GCP: MLflow tracking + model registry,
 champion/challenger promotion gate, Evidently drift detection, automated
 retraining via Cloud Run Jobs, rollback by reassigning the `@champion` alias
@@ -78,6 +80,13 @@ live public service, including the rollback demo: `@champion` reassigned to
 an older version directly in MLflow, no Cloud Run deploy touched — 16 minutes
 later `/model-info` and `/predict` had switched on their own. See
 [FASE-6-SERVE.md](FASE-6-SERVE.md).
+
+CI/CD is wired: one workflow tests, plans Terraform on PRs, applies on
+`main`, then builds/pushes/deploys all three components tagged with the
+commit SHA (WIF auth, no service-account keys in GitHub). Verified against
+the real pipeline, not just a green badge: after the first successful run,
+all three components in production were confirmed to be running the exact
+image built by that commit. See [FASE-7-CICD.md](FASE-7-CICD.md).
 
 ## Local setup
 
