@@ -8,3 +8,4 @@ tfplan
 .claude/settings.local.json
 data/*.csv
 mlruns/
+FASE-*.md
