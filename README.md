@@ -68,7 +68,16 @@ no-op and the replay cursor doesn't move. `tests/test_drift.py` covers the
 share computation (seasonal window forces drift, identical windows don't) and
 the pure retrain decision.
 
-Serving lands next; see commit history.
+Serving is live and public: [src/serve/main.py](src/serve/main.py) loads
+`models:/aep-demand@champion`, `/model-info` (version, run_id, training date,
+holdout MAE) and `/predict` (forecast for one hour, defaulting to the hour
+right after the champion's own training window — the replay's simulated
+"now"). The alias is checked on a 15-minute TTL, not on every request; the
+model reloads only if the version behind it changed. Verified against the
+live public service, including the rollback demo: `@champion` reassigned to
+an older version directly in MLflow, no Cloud Run deploy touched — 16 minutes
+later `/model-info` and `/predict` had switched on their own. See
+[FASE-6-SERVE.md](FASE-6-SERVE.md).
 
 ## Local setup
 
