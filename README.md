@@ -43,8 +43,14 @@ no separate state store. Verified against the live server (two runs, cursor
 advanced 2005-03-30 → 2005-04-06 as expected); see
 [FASE-2-TRAINING.md](FASE-2-TRAINING.md).
 
-Registry gate, drift detection, and serving land phase by phase; see commit
-history.
+Promotion gate is in place: [src/promote.py](src/promote.py) compares the
+latest registered version (challenger) against the version aliased
+`@champion` on their own logged holdout MAE, plus an absolute guardrail, and
+reassigns the `@champion` alias — no stage, no redeploy. Verified against the
+live server: first version promoted as bootstrap champion, a worse version
+trained afterward correctly rejected. See [FASE-3-PROMOTE.md](FASE-3-PROMOTE.md).
+
+Drift detection and serving land phase by phase; see commit history.
 
 ## Local setup
 
