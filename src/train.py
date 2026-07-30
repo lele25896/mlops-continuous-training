@@ -2,7 +2,8 @@
 
 Cursor: read train_end from the last FINISHED run's params in this
 experiment, advance 7 days (first run anchors on MIN_TRAIN_DAYS of history).
-No gate here — Fase 3 (promote.py) decides champion/challenger promotion.
+No gate here — Fase 3 (promote.py) decides champion/challenger promotion,
+Fase 5 (drift.py + run_job.py) decides whether this module runs at all today.
 """
 import os
 
@@ -34,7 +35,32 @@ def _last_train_end(experiment_name: str) -> pd.Timestamp | None:
     return pd.Timestamp(finished["params.train_end"].max())
 
 
-def main() -> None:
+def next_candidate_train_end() -> pd.Timestamp | None:
+    """Next train_end the cursor would use, or None if the replay is exhausted.
+
+    Standalone from main() (own load_series call) so run_job.py can check the
+    drift gate before deciding whether to train at all today.
+    """
+    series = load_series(DATA_URI)
+    train_end = next_train_end(_last_train_end(EXPERIMENT), series.index.min(), MIN_TRAIN_DAYS)
+    return train_end if train_end <= series.index.max() else None
+
+
+def last_run_time(experiment_name: str) -> pd.Timestamp | None:
+    """Wall-clock start time of the last FINISHED run, for the >=7-real-days retrain rule."""
+    exp = mlflow.get_experiment_by_name(experiment_name)
+    if exp is None:
+        return None
+    runs = mlflow.search_runs(
+        experiment_ids=[exp.experiment_id],
+        max_results=1,
+        order_by=["start_time DESC"],
+        filter_string="status = 'FINISHED'",
+    )
+    return None if runs.empty else runs.iloc[0]["start_time"]
+
+
+def main(drift_share: float | None = None, drift_report_uri: str | None = None) -> None:
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
@@ -58,6 +84,10 @@ def main() -> None:
         mlflow.log_param("train_end", train_end.isoformat())
         mlflow.log_param("train_rows", len(train_df))
         mlflow.log_metric("holdout_mae", mae)
+        if drift_share is not None:
+            mlflow.log_metric("drift_share", drift_share)
+        if drift_report_uri:
+            mlflow.log_param("drift_report", drift_report_uri)
         mlflow.xgboost.log_model(model, artifact_path="model", registered_model_name=MODEL_NAME)
 
     print(f"OK: train_end={train_end.isoformat()} holdout_mae={mae:.1f}")

@@ -1,6 +1,7 @@
 # Fase 4 — Cloud Run Job "retrain-loop" + Cloud Scheduler trigger.
-# Job runs train -> promote in sequence. Drift check (Fase 5) is not wired
-# into the decision yet: every execution retrains and re-runs the gate.
+# Job checks drift -> train -> promote (Fase 5 wires the drift gate into
+# jobs/run_job.py; some daily triggers are no-ops when there's no drift and
+# <7 days since the last training run).
 
 resource "google_service_account" "retrain_job" {
   account_id   = "retrain-job"

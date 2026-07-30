@@ -2,6 +2,7 @@ pandas
 xgboost
 scikit-learn
 mlflow==2.22.0
+evidently==0.7.21
 google-cloud-storage==2.19.0
 google-auth==2.37.0
 pytest

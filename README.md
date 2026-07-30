@@ -57,7 +57,18 @@ manually (`gcloud run jobs execute`) and via a real scheduler trigger — two
 consecutive runs, cursor and promotion both correct across both. See
 [FASE-4-JOB-SCHEDULER.md](FASE-4-JOB-SCHEDULER.md).
 
-Drift detection and serving land phase by phase; see commit history.
+Drift detection is in place: [src/drift.py](src/drift.py) compares the
+champion's training window against the newest replay window on the model's
+feature columns (Evidently `DataDriftPreset`), logs the drifted-feature share
+as an MLflow metric alongside `holdout_mae`, and uploads the HTML report to
+GCS. `jobs/run_job.py` uses it as a gate before training at all: retrain on
+drift above threshold, on the first-ever run, or when 7 real days have passed
+since the last training run — otherwise the daily scheduler trigger is a
+no-op and the replay cursor doesn't move. `tests/test_drift.py` covers the
+share computation (seasonal window forces drift, identical windows don't) and
+the pure retrain decision.
+
+Serving lands next; see commit history.
 
 ## Local setup
 

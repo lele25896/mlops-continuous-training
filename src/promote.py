@@ -7,6 +7,7 @@ deprecated in MLflow in favor of aliases.
 """
 import os
 
+import pandas as pd
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
@@ -41,6 +42,14 @@ def _current_champion(client: MlflowClient, name: str):
 def _latest_challenger(client: MlflowClient, name: str):
     versions = client.search_model_versions(f"name='{name}'")
     return max(versions, key=lambda v: int(v.version))
+
+
+def champion_train_end(client: MlflowClient) -> pd.Timestamp | None:
+    """train_end of the run behind @champion, for drift.py's reference window. None if no champion yet."""
+    champion = _current_champion(client, MODEL_NAME)
+    if champion is None:
+        return None
+    return pd.Timestamp(client.get_run(champion.run_id).data.params["train_end"])
 
 
 def main() -> None:
