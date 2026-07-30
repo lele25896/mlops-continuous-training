@@ -1,0 +1,6 @@
+pandas
+xgboost
+scikit-learn
+mlflow==2.22.0
+google-cloud-storage==2.19.0
+pytest

@@ -33,8 +33,18 @@ MLflow tracking server is live (private Cloud Run service, SQLite backend on
 a natively-mounted GCS volume, `max_instance_count=1`). The concurrency risk
 that design depends on — GCS FUSE has no file locking — was load-tested
 before building anything on top of it: see [scripts/smoke_mlflow.py](scripts/smoke_mlflow.py).
-Training, registry gate, drift detection, and serving land phase by phase;
-see commit history.
+
+Training loop is in place: [src/data.py](src/data.py) slices the AEP replay
+into expanding-train / 7-day-holdout windows and builds lag/calendar
+features, [src/train.py](src/train.py) trains an XGBoost model each run and
+logs it to the registry. The replay cursor lives entirely in MLflow — each
+run reads `train_end` from the last finished run's params and advances it,
+no separate state store. Verified against the live server (two runs, cursor
+advanced 2005-03-30 → 2005-04-06 as expected); see
+[FASE-2-TRAINING.md](FASE-2-TRAINING.md).
+
+Registry gate, drift detection, and serving land phase by phase; see commit
+history.
 
 ## Local setup
 
