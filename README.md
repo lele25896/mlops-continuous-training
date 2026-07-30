@@ -50,6 +50,13 @@ reassigns the `@champion` alias — no stage, no redeploy. Verified against the
 live server: first version promoted as bootstrap champion, a worse version
 trained afterward correctly rejected. See [FASE-3-PROMOTE.md](FASE-3-PROMOTE.md).
 
+Orchestration is live: a Cloud Run Job (`retrain-loop`) runs train → promote
+end to end using its own service-account identity (no impersonation), on a
+daily Cloud Scheduler trigger (Admin API `:run`, OAuth token). Verified both
+manually (`gcloud run jobs execute`) and via a real scheduler trigger — two
+consecutive runs, cursor and promotion both correct across both. See
+[FASE-4-JOB-SCHEDULER.md](FASE-4-JOB-SCHEDULER.md).
+
 Drift detection and serving land phase by phase; see commit history.
 
 ## Local setup

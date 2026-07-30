@@ -4,7 +4,7 @@ __pycache__/
 .terraform/
 *.tfstate
 *.tfstate.*
-tfplan
+tfplan*
 .claude/settings.local.json
 data/*.csv
 mlruns/

@@ -26,6 +26,7 @@ locals {
   apis = [
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
+    "cloudscheduler.googleapis.com",
   ]
 }
 
